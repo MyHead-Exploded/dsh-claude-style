@@ -6,10 +6,15 @@ All notable changes to `dsh-claude-style` are documented here, newest first.
 
 [中文](#cn-unreleased) | [English](#en-unreleased)
 
-<h3 id="cn-unreleased">体验优化</h3>
+<h3 id="cn-unreleased">新增功能</h3>
+
+- **侧栏的宽度与收张按 Claude 的读数来**：左侧边栏能拖到 200px（宿主自己的下限是 264px）；上限随窗口走，取 clamp(⌊窗口宽度⌋ − 330, 200, 420)px，正文列因此始终留出 330px。拖动中候选宽度低于 100px（下限的一半）时侧栏当场收起，回拖过这条线又当场弹出，收起与展开各是一次版式交换，内容以 300ms 淡入落下；在把手上按下并松开（位移不超过 3px）就是收张开关；收起再展开回到你上一次拖到的那一档。
+
+### 体验优化
 
 - **右侧栏的收起键站到顶栏右端**：面板打开时，头部那一行的右端出现一枚收起按钮，面板里原来那一枚让位；按下它面板收起，宿主的打开按钮回到原处。宿主那枚搬不出来——它挂在带 transform 且被裁剪的子树里，fixed 定位会被量到面板的坐标、再被面板的边裁掉。
 - **设置页的说明改成一句话，能省的就省**：此前有的写着整段——把开关两种状态各自的样子、每个选项分别是什么都讲一遍——有的只有一句，有的干脆不写；现在每条说明只说这一项给你什么，标题与选项已经说清的那几行只剩标题与控件。
+- **拖动侧栏时每帧只写一次宽度**：指针的原始上报按设备速率到达，此前每收到一个就写一次外壳的网格轨道，正文跟着重排一次；现在一个绘制帧只写一次，写的是这一帧最新的那一档宽度，松手时把尚未写出的那次补上。在内容多的页面上，拖动的边缘因此不再落后于指针。
 
 ### 移除
 
@@ -19,10 +24,15 @@ All notable changes to `dsh-claude-style` are documented here, newest first.
 
 - **README 收成展示文案**：中英两份都以截图与动画帧为主，预览各配一行说明，安装收成两个命令块，鸣谢由四段正文改成四条；读者要的细节留在文档表指向的几份文件里。
 
-<h3 id="en-unreleased">Improvements</h3>
+<h3 id="en-unreleased">New Features</h3>
+
+- **The width and the folding follow Claude's own readings**: the left column drags down to 200px against the host's 264px, and its ceiling follows the window — clamp(⌊viewport⌋ - 330, 200, 420)px, which leaves the content column 330px. A drag below 100px, half the floor, folds the column on the spot and a drag back over that line brings it out again, each of the two being one layout swap with the body fading in over 300ms; a press and release on the handle (under 3px of travel) is the collapse toggle itself, and expanding the column comes back to the width you last dragged to.
+
+### Improvements
 
 - **The right panel's collapse control stands at the top bar's right end**: while the panel is open, a collapse button appears at the right end of the header's row and the panel's own copy steps aside; pressing it closes the panel and the host's open button returns. The host's own control cannot be moved there — it hangs from a transformed, clipped subtree, where a fixed box is measured from the panel and cut at its edge.
 - **Settings descriptions say one clause, and only where it adds something**: a line that used to spell out both states of a switch and every choice beside it now says only what the setting gives the reader, and a row whose title and choices already say it carries no line at all.
+- **The sidebar's drag writes its width once per frame**: the pointer's raw reports arrive at the device's own rate, and every one of them used to write the shell's grid track, re-wrapping the content behind it; a pass now carries a single write of the latest width, with the last one written on release. On a page with content in it the edge no longer trails the pointer.
 
 ### Removals
 
