@@ -143,6 +143,13 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (disposed) return
     if (frame === null || !frame.isConnected || root === null || !root.isConnected) attach()
     if (frame === null || root === null) return
+    // The pass after the line was crossed: the dim has been painted, so the
+    // column can go. The gesture ends with it, the pointer still being down.
+    if (foldOnRelease && dragging) {
+      stopGesture()
+      fold()
+      return
+    }
     if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) {
       pending = null
       return
@@ -162,6 +169,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   }
 
   function stopGesture() {
+    const folding = foldOnRelease
+    foldOnRelease = false
     dragging = false
     pointerId = -1
     // The last move is written now: a pass may not come for a pointer that has
@@ -212,25 +221,23 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     event.stopImmediatePropagation()
     event.preventDefault()
     const reached = Math.round(startWidth + (event.clientX - startX))
-    // Past the floor the column stands at the floor and the release is what
-    // folds it. Folding on the way through lost the gesture to any swing wide
-    // enough to cross that line, which a fast shake crosses again and again, so
-    // the reader is shown the throw instead: the column dips while the pointer
-    // holds past the threshold and comes back the moment it returns.
-    const folding = reached < MIN_WIDTH - COLLAPSE_OVERDRAG
-    if (folding !== foldOnRelease) {
-      foldOnRelease = folding
-      if (folding) frame?.setAttribute(FOLDING_ATTRIBUTE, '')
-      else frame?.removeAttribute(FOLDING_ATTRIBUTE)
+    if (foldOnRelease) return
+    // Crossing the line is itself the fold, and it happens while the pointer is
+    // still down: the column dims in this turn and the collapse is pressed on
+    // the pass after it, so the reader sees what is coming before it goes.
+    if (reached < MIN_WIDTH - COLLAPSE_OVERDRAG) {
+      foldOnRelease = true
+      frame?.setAttribute(FOLDING_ATTRIBUTE, '')
+      want(MIN_WIDTH)
+      ui.schedule?.()
+      return
     }
     want(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached)))
   }
 
   function onPointerUp(event: PointerEvent) {
     if (!dragging || event.pointerId !== pointerId) return
-    const folding = foldOnRelease
     stopGesture()
-    if (folding) fold()
   }
 
   window.addEventListener('pointerdown', onPointerDown, true)

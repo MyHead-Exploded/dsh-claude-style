@@ -20,3 +20,11 @@ body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-clau
   opacity: 0.55;
   transition: opacity var(--dsh-claude-timing-feedback);
 }
+
+/* While the skin owns the gesture nothing eases the width: a transition on the
+   columns would smooth every write into the one after it and the edge would
+   trail the pointer for the whole drag. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-dragging],
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-dragging] [data-dsh-claude-part~="sidebar-column"] {
+  transition: none;
+}
