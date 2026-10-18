@@ -31,8 +31,13 @@ import type manifest from './sidebar-width.manifest'
 const MIN_WIDTH = 215
 /** The widest, which is the host's own ceiling. */
 const MAX_WIDTH = 420
-/** The width a drag lets go at, folding the column instead of narrowing it. */
-const COLLAPSE_BELOW = 100
+/**
+ * How far past the floor the pointer goes before the release folds the column.
+ * Measured from the floor rather than as a width of its own: the column stands
+ * still at the floor while the pointer travels, so a width threshold deep below
+ * it asks the reader to drag a stretch that shows no sign of being read.
+ */
+const COLLAPSE_OVERDRAG = 48
 
 /** The frame the host lays the three columns out in; its inline grid carries the width. */
 const FRAME_SELECTOR = `[${PART_ATTR}~="layout-frame"]`
@@ -40,6 +45,8 @@ const FRAME_SELECTOR = `[${PART_ATTR}~="layout-frame"]`
 const COLLAPSED_ATTRIBUTE = 'data-sidebar-collapsed'
 /** The skin's mark while the skin owns the gesture (sidebar-width.css). */
 const DRAGGING_ATTRIBUTE = 'data-dsh-claude-sidebar-dragging'
+/** The skin's mark while a release would fold the column instead of keeping it. */
+const FOLDING_ATTRIBUTE = 'data-dsh-claude-sidebar-folding'
 
 export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let frame: HTMLElement | null = null
@@ -160,6 +167,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       writeWidth(asked)
     }
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
+    frame?.removeAttribute(FOLDING_ATTRIBUTE)
     window.removeEventListener('pointermove', onPointerMove, true)
     window.removeEventListener('pointerup', onPointerUp, true)
     window.removeEventListener('pointercancel', stopGesture, true)
@@ -201,8 +209,15 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     const reached = Math.round(startWidth + (event.clientX - startX))
     // Past the floor the column stands at the floor and the release is what
     // folds it. Folding on the way through lost the gesture to any swing wide
-    // enough to cross that line, which a fast shake crosses again and again.
-    foldOnRelease = reached < COLLAPSE_BELOW
+    // enough to cross that line, which a fast shake crosses again and again, so
+    // the reader is shown the throw instead: the column dips while the pointer
+    // holds past the threshold and comes back the moment it returns.
+    const folding = reached < MIN_WIDTH - COLLAPSE_OVERDRAG
+    if (folding !== foldOnRelease) {
+      foldOnRelease = folding
+      if (folding) frame?.setAttribute(FOLDING_ATTRIBUTE, '')
+      else frame?.removeAttribute(FOLDING_ATTRIBUTE)
+    }
     want(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached)))
   }
 
@@ -223,6 +238,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     observer = null
     window.removeEventListener('pointerdown', onPointerDown, true)
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
+    frame?.removeAttribute(FOLDING_ATTRIBUTE)
     frame = null
     root = null
     handle = null

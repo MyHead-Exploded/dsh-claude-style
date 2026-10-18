@@ -12,3 +12,11 @@ body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-clau
 body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-dragging] [data-dsh-claude-part~="sidebar-column"] {
   user-select: none;
 }
+
+/* Held past the floor, where letting go folds the column: the column dips, so
+   the throw reads as one before the release makes it so, and comes straight
+   back when the pointer returns to the floor. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-folding] [data-dsh-claude-part~="sidebar-column"] {
+  opacity: 0.55;
+  transition: opacity var(--dsh-claude-timing-feedback);
+}
