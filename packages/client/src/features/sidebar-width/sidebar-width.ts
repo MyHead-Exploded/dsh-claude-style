@@ -1,5 +1,5 @@
 import { SIDEBAR_RESIZE_HANDLE_SELECTOR } from '@dsh-claude-style/contracts/dom'
-import { findSidebarRoot, findSidebarToggle } from '@dsh-claude-style/engine/host'
+import { cacheFirstMatch, findSidebarRoot, findSidebarToggle } from '@dsh-claude-style/engine/host'
 import { PART_ATTR } from '../../constants'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { FeatureUi } from '../../core/feature'
@@ -37,7 +37,7 @@ const MAX_WIDTH = 420
  * still at the floor while the pointer travels, so a width threshold deep below
  * it asks the reader to drag a stretch that shows no sign of being read.
  */
-const COLLAPSE_OVERDRAG = 48
+const COLLAPSE_OVERDRAG = 24
 
 /** The frame the host lays the three columns out in; its inline grid carries the width. */
 const FRAME_SELECTOR = `[${PART_ATTR}~="layout-frame"]`
@@ -45,6 +45,12 @@ const FRAME_SELECTOR = `[${PART_ATTR}~="layout-frame"]`
 const COLLAPSED_ATTRIBUTE = 'data-sidebar-collapsed'
 /** The skin's mark while the skin owns the gesture (sidebar-width.css). */
 const DRAGGING_ATTRIBUTE = 'data-dsh-claude-sidebar-dragging'
+/**
+ * The collapse toggle wherever the shell keeps it. The caption-strip shells fix
+ * it out of the top row's own cell, where the sidebar contract names it, so the
+ * seat falls back to the part alone; a fold that cannot press it is no fold.
+ */
+const findAnyToggle = cacheFirstMatch<HTMLButtonElement>('[data-dsh-claude-part~="sidebar-toggle"]')
 /** The skin's mark while a release would fold the column instead of keeping it. */
 const FOLDING_ATTRIBUTE = 'data-dsh-claude-sidebar-folding'
 
@@ -77,10 +83,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * is what the last stretch of a drag through the clamped end is made of.
    */
   function want(next: number) {
-    if (next === width && pending === null) return
+    if (next === width) return
     width = next
-    pending = next
-    ui.schedule?.()
+    writeWidth(next)
   }
 
   /** The frame's own grid with its first track set: the host's other two tracks
@@ -176,7 +181,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
 
   /** Fold the column: the host's toggle is pressed, and its own rail animation runs. */
   function fold() {
-    findSidebarToggle()?.click()
+    (findSidebarToggle() ?? findAnyToggle())?.click()
   }
 
   function onPointerDown(event: PointerEvent) {
