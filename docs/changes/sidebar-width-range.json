@@ -3,6 +3,6 @@
   "order": 1,
   "at": "2026-10-18",
   "external": false,
-  "zh": "**侧栏可以拖得比宿主的下限更窄**：左侧边栏能一路拖到 215px（宿主自己的下限是 264px），把侧栏拖过下限一小段再松手就收起，收起走宿主自己的折叠动画，收起再展开回到你上一次拖到的那一档。",
-  "en": "**The sidebar drags narrower than the host's own floor**: the left column goes down to 215px against the host's 264px, a drag a short way past the floor folds it on release through the host's own rail animation, and expanding it again comes back to the width you last dragged to."
+  "zh": "**侧栏可以拖得比宿主的下限更窄**：左侧边栏能一路拖到 215px（宿主自己的下限是 264px），越过下限 95px 时侧栏变暗、拖到 100px 时当场收起（收起走宿主自己的折叠动画），收起后仍按住鼠标向右拖过窗口左边 110px 处侧栏重新弹出，收起再展开回到你上一次拖到的那一档。",
+  "en": "**The sidebar drags narrower than the host's own floor**: the left column goes down to 215px against the host's 264px, the column dims 95px past the floor and folds at 100px while the pointer is still down, through the host's own rail animation, and with the button held a drag back out past 110px from the window's edge brings it back, and expanding it again comes back to the width you last dragged to."
 }

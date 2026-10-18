@@ -37,7 +37,15 @@ const MAX_WIDTH = 420
  * still at the floor while the pointer travels, so a width threshold deep below
  * it asks the reader to drag a stretch that shows no sign of being read.
  */
-const COLLAPSE_OVERDRAG = 24
+/** How far past the floor the column dims: the throw is about to fold it. */
+const DIM_OVERDRAG = 95
+/** How far past the floor the fold lands, the pointer still being down. */
+const FOLD_OVERDRAG = 100
+/** How far right of the window's own left edge a folded column comes back out. */
+const REOPEN_X = 110
+/** The freshest pointer positions the browser offers, one per input report. */
+const MOVE_EVENT: 'pointerrawupdate' | 'pointermove' =
+  'onpointerrawupdate' in window ? 'pointerrawupdate' : 'pointermove'
 
 /** The frame the host lays the three columns out in; its inline grid carries the width. */
 const FRAME_SELECTOR = `[${PART_ATTR}~="layout-frame"]`
@@ -64,7 +72,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   /** The width the pointer has asked for, waiting for the pass that writes it. */
   let pending: number | null = null
   /** Whether the pointer stands past the floor right now, so the release folds the column. */
-  let foldOnRelease = false
+  /** Whether the throw has folded the column while the pointer stays down. */
+  let foldedHeld = false
+  /** Whether the column is dimmed right now. */
+  let dimmed = false
   let dragging = false
   let pointerId = -1
   let startX = 0
@@ -143,13 +154,6 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (disposed) return
     if (frame === null || !frame.isConnected || root === null || !root.isConnected) attach()
     if (frame === null || root === null) return
-    // The pass after the line was crossed: the dim has been painted, so the
-    // column can go. The gesture ends with it, the pointer still being down.
-    if (foldOnRelease && dragging) {
-      stopGesture()
-      fold()
-      return
-    }
     if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) {
       pending = null
       return
@@ -169,8 +173,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   }
 
   function stopGesture() {
-    const folding = foldOnRelease
-    foldOnRelease = false
+    foldedHeld = false
+    dimmed = false
     dragging = false
     pointerId = -1
     // The last move is written now: a pass may not come for a pointer that has
@@ -182,10 +186,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     }
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
     frame?.removeAttribute(FOLDING_ATTRIBUTE)
-    window.removeEventListener('pointermove', onPointerMove, true)
+    window.removeEventListener(MOVE_EVENT, onPointerMove as EventListener, true)
     window.removeEventListener('pointerup', onPointerUp, true)
     window.removeEventListener('pointercancel', stopGesture, true)
-    foldOnRelease = false
   }
 
   /** Fold the column: the host's toggle is pressed, and its own rail animation runs. */
@@ -211,7 +214,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     startX = event.clientX
     startWidth = root.getBoundingClientRect().width
     frame.setAttribute(DRAGGING_ATTRIBUTE, '')
-    window.addEventListener('pointermove', onPointerMove, true)
+    window.addEventListener(MOVE_EVENT, onPointerMove as EventListener, true)
     window.addEventListener('pointerup', onPointerUp, true)
     window.addEventListener('pointercancel', stopGesture, true)
   }
@@ -220,19 +223,40 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (!dragging || event.pointerId !== pointerId) return
     event.stopImmediatePropagation()
     event.preventDefault()
-    const reached = Math.round(startWidth + (event.clientX - startX))
-    if (foldOnRelease) return
-    // Crossing the line is itself the fold, and it happens while the pointer is
-    // still down: the column dims in this turn and the collapse is pressed on
-    // the pass after it, so the reader sees what is coming before it goes.
-    if (reached < MIN_WIDTH - COLLAPSE_OVERDRAG) {
-      foldOnRelease = true
-      frame?.setAttribute(FOLDING_ATTRIBUTE, '')
-      want(MIN_WIDTH)
-      ui.schedule?.()
+    // Folded by the throw while the button is still down: dragging back out of
+    // the window's own edge brings the column back, and the drag carries on.
+    if (foldedHeld) {
+      if (event.clientX > REOPEN_X) reopen(event.clientX)
       return
     }
+    const reached = Math.round(startWidth + (event.clientX - startX))
+    const past = MIN_WIDTH - reached
+    if (past >= FOLD_OVERDRAG) {
+      foldedHeld = true
+      dimmed = true
+      frame?.setAttribute(FOLDING_ATTRIBUTE, '')
+      want(MIN_WIDTH)
+      fold()
+      return
+    }
+    // The dim goes up just before the fold, so the throw reads as one move.
+    const dimming = past >= DIM_OVERDRAG
+    if (dimming !== dimmed) {
+      dimmed = dimming
+      if (dimming) frame?.setAttribute(FOLDING_ATTRIBUTE, '')
+      else frame?.removeAttribute(FOLDING_ATTRIBUTE)
+    }
     want(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached)))
+  }
+
+  /** Out of the fold: the toggle is pressed again and the drag resumes at the floor. */
+  function reopen(at: number) {
+    foldedHeld = false
+    dimmed = false
+    frame?.removeAttribute(FOLDING_ATTRIBUTE)
+    fold()
+    startX = at
+    startWidth = MIN_WIDTH
   }
 
   function onPointerUp(event: PointerEvent) {
