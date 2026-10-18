@@ -46,6 +46,7 @@ export interface Handles {
   headerBand: FeatureHandle
   settingsNav: FeatureHandle
   surface: FeatureHandle
+  sidebarWidth: FeatureHandle
 }
 
 export type HandleName = keyof Handles

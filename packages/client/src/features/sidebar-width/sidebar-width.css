@@ -1,0 +1,8 @@
+/* The sidebar's resize handle while the skin owns the gesture
+   (features/sidebar-width): the pointer keeps the resize cursor across the whole
+   column, so a fast drag that leaves the host's own 8px strip is still one
+   gesture, and the drag selects no text under it. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-dragging] {
+  cursor: col-resize;
+  user-select: none;
+}

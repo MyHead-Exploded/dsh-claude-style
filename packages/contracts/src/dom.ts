@@ -227,6 +227,13 @@ export const FOOT_AREA_SELECTOR = '[data-dsh-claude-part~="foot-area"]'
 export const SIDEBAR_SEARCH_SLOT_SELECTOR = '[data-slot="sidebar"] [data-dsh-claude-part~="search-slot"]'
 /** The sidebar's own column box, whose width follows the collapse and the reader's drag. */
 export const SIDEBAR_ROOT_SELECTOR = '[data-slot="sidebar"] > [data-dsh-claude-part~="sidebar-root"]'
+/**
+ * The host's resize handle for that column: an 8px strip standing on the
+ * column's right edge, whose inline `left` is the column's width, and the only
+ * thing that starts a drag of it. It is a child of the layout frame, and the
+ * host unmounts it while the column is folded.
+ */
+export const SIDEBAR_RESIZE_HANDLE_SELECTOR = '[data-side="sidebar"]'
 /** The wide brand in the sidebar's top row; the collapsed rail has none. */
 export const SIDEBAR_BRAND_SELECTOR = '[data-slot="sidebar"] [data-dsh-claude-part~="logo-row"] > [data-dsh-claude-part~="brand-button"]'
 /**
