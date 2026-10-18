@@ -38,7 +38,7 @@ const MAX_WIDTH = 420
  * it asks the reader to drag a stretch that shows no sign of being read.
  */
 /** How far past the floor the column dims: the throw is about to fold it. */
-const DIM_OVERDRAG = 95
+const DIM_OVERDRAG = 90
 /** How far past the floor the fold lands, the pointer still being down. */
 const FOLD_OVERDRAG = 100
 /** How far right of the window's own left edge a folded column comes back out. */

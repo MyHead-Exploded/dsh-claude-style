@@ -39,7 +39,7 @@ All notable changes to `dsh-claude-style` are documented here, newest first.
 <h3 id="cn-0.16.3">新增功能</h3>
 
 - **Beam 的模型行画出厂商组合标**：目录里 `opencode-go/beam-free` 这类标识现在认领 Reflection 的组合标。字标是厂名的，模型名里从不写它，字标因此站在名字前面；标记在浅色画布上用厂商自己的品牌色，深色画布上随标签文字。
-- **侧栏可以拖得比宿主的下限更窄**：左侧边栏能一路拖到 215px（宿主自己的下限是 264px），越过下限 95px 时侧栏变暗、拖到 100px 时当场收起（收起走宿主自己的折叠动画），收起后仍按住鼠标向右拖过窗口左边 110px 处侧栏重新弹出，收起再展开回到你上一次拖到的那一档。
+- **侧栏可以拖得比宿主的下限更窄**：左侧边栏能一路拖到 215px（宿主自己的下限是 264px），越过下限 90px 时侧栏变暗、拖到 100px 时当场收起（收起走宿主自己的折叠动画），收起后仍按住鼠标向右拖过窗口左边 110px 处侧栏重新弹出，收起再展开回到你上一次拖到的那一档。
 
 ### 体验优化
 
@@ -65,7 +65,7 @@ All notable changes to `dsh-claude-style` are documented here, newest first.
 <h3 id="en-0.16.3">New Features</h3>
 
 - **Beam rows draw the vendor lockup**: an id such as `opencode-go/beam-free` now claims Reflection's lockup. The wordmark is the vendor's, which the catalog's name never spells, so it leads the label; the mark wears the vendor's own brand colour on the ivory canvas and the label's ink on the warm black one.
-- **The sidebar drags narrower than the host's own floor**: the left column goes down to 215px against the host's 264px, the column dims 95px past the floor and folds at 100px while the pointer is still down, through the host's own rail animation, and with the button held a drag back out past 110px from the window's edge brings it back, and expanding it again comes back to the width you last dragged to.
+- **The sidebar drags narrower than the host's own floor**: the left column goes down to 215px against the host's 264px, the column dims 90px past the floor and folds at 100px while the pointer is still down, through the host's own rail animation, and with the button held a drag back out past 110px from the window's edge brings it back, and expanding it again comes back to the width you last dragged to.
 
 ### Improvements
 
