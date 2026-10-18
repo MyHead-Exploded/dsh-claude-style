@@ -50,6 +50,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let width = MIN_WIDTH
   /** The width the pointer has asked for, waiting for the pass that writes it. */
   let pending: number | null = null
+  /** Whether the pointer stands past the floor right now, so the release folds the column. */
+  let foldOnRelease = false
   let dragging = false
   let pointerId = -1
   let startX = 0
@@ -159,8 +161,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     }
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
     window.removeEventListener('pointermove', onPointerMove, true)
-    window.removeEventListener('pointerup', stopGesture, true)
+    window.removeEventListener('pointerup', onPointerUp, true)
     window.removeEventListener('pointercancel', stopGesture, true)
+    foldOnRelease = false
   }
 
   /** Fold the column: the host's toggle is pressed, and its own rail animation runs. */
@@ -171,18 +174,23 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   function onPointerDown(event: PointerEvent) {
     const target = event.target
     if (dragging || frame === null || root === null) return
-    if (!(target instanceof Element) || target.closest(SIDEBAR_RESIZE_HANDLE_SELECTOR) === null) return
+    if (!(target instanceof Element)) return
+    const grabbed = target.closest<HTMLElement>(SIDEBAR_RESIZE_HANDLE_SELECTOR)
+    if (grabbed === null) return
     // The host's own handler must not see this: it clamps to its store's floor
     // and writes the same three places, and two writers would fight over them.
     event.stopImmediatePropagation()
     event.preventDefault()
     dragging = true
+    // The pointer is held by the handle for the rest of the gesture, so a drag
+    // that outruns the column — or leaves the window — keeps arriving here.
+    grabbed.setPointerCapture?.(event.pointerId)
     pointerId = event.pointerId
     startX = event.clientX
     startWidth = root.getBoundingClientRect().width
     frame.setAttribute(DRAGGING_ATTRIBUTE, '')
     window.addEventListener('pointermove', onPointerMove, true)
-    window.addEventListener('pointerup', stopGesture, true)
+    window.addEventListener('pointerup', onPointerUp, true)
     window.addEventListener('pointercancel', stopGesture, true)
   }
 
@@ -191,12 +199,18 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     event.stopImmediatePropagation()
     event.preventDefault()
     const reached = Math.round(startWidth + (event.clientX - startX))
-    if (reached < COLLAPSE_BELOW) {
-      stopGesture()
-      fold()
-      return
-    }
+    // Past the floor the column stands at the floor and the release is what
+    // folds it. Folding on the way through lost the gesture to any swing wide
+    // enough to cross that line, which a fast shake crosses again and again.
+    foldOnRelease = reached < COLLAPSE_BELOW
     want(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached)))
+  }
+
+  function onPointerUp(event: PointerEvent) {
+    if (!dragging || event.pointerId !== pointerId) return
+    const folding = foldOnRelease
+    stopGesture()
+    if (folding) fold()
   }
 
   window.addEventListener('pointerdown', onPointerDown, true)
