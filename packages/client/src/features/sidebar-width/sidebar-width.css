@@ -1,8 +1,14 @@
 /* The sidebar's resize handle while the skin owns the gesture
    (features/sidebar-width): the pointer keeps the resize cursor across the whole
-   column, so a fast drag that leaves the host's own 8px strip is still one
-   gesture, and the drag selects no text under it. */
+   shell, so a fast drag that leaves the host's own 8px strip is still one
+   gesture. */
 body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-dragging] {
   cursor: col-resize;
+}
+
+/* The selection lock stands on the column alone: it is the subtree a drag
+   travels over, while the shell around it — the conversation most of all — is
+   left out of the restyle a lock on the frame would put it through. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-dragging] [data-dsh-claude-part~="sidebar-column"] {
   user-select: none;
 }

@@ -48,6 +48,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let observer: MutationObserver | null = null
   /** The width the reader last chose; the host forgets it at every fold. */
   let width = MIN_WIDTH
+  /** The width the pointer has asked for, waiting for the pass that writes it. */
+  let pending: number | null = null
   let dragging = false
   let pointerId = -1
   let startX = 0
@@ -55,7 +57,24 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let disposed = false
 
   /**
-   * The frame's own grid with its first track set: the host's other two tracks
+   * The pointer's own width, held until the pass writes it.
+   *
+   * A drag re-lays the whole shell out — the middle column re-wraps to its new
+   * width — and the page has other readers of that layout. Writing here, in the
+   * pointer's own turn, puts this write in front of the next pass's measures and
+   * each of those reads then forces the layout to settle; the frame pays for it
+   * twice. Held to the pass, the reads happen first and the shell lays out once
+   * (D40). Moves that land on the width already asked for cost nothing, which
+   * is what the last stretch of a drag through the clamped end is made of.
+   */
+  function want(next: number) {
+    if (next === width && pending === null) return
+    width = next
+    pending = next
+    ui.schedule?.()
+  }
+
+  /** The frame's own grid with its first track set: the host's other two tracks
    * are carried over as they stand, so a column at its right edge, or one the
    * reader docked, keeps its own width and its `minmax(0px, 1fr)` middle.
    */
@@ -110,10 +129,19 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (disposed) return
     if (frame === null || !frame.isConnected || root === null || !root.isConnected) attach()
     if (frame === null || root === null) return
-    if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) return
+    if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) {
+      pending = null
+      return
+    }
     // The host unmounts the handle while the column is folded and mounts a new
     // one on the way out, so the seat is re-read whenever this one is gone.
     if (handle === null || !handle.isConnected) handle = frame.querySelector<HTMLElement>(SIDEBAR_RESIZE_HANDLE_SELECTOR)
+    if (pending !== null) {
+      const asked = pending
+      pending = null
+      writeWidth(asked)
+      return
+    }
     const wanted = `${width}px`
     if (root.style.width !== wanted || trackWidth() !== wanted) writeWidth(width)
     else if (handle !== null && handle.style.left !== wanted) handle.style.left = wanted
@@ -122,6 +150,13 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   function stopGesture() {
     dragging = false
     pointerId = -1
+    // The last move is written now: a pass may not come for a pointer that has
+    // stopped, and the column must not rest a frame short of where it was left.
+    if (pending !== null) {
+      const asked = pending
+      pending = null
+      writeWidth(asked)
+    }
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
     window.removeEventListener('pointermove', onPointerMove, true)
     window.removeEventListener('pointerup', stopGesture, true)
@@ -161,8 +196,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       fold()
       return
     }
-    width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached))
-    writeWidth(width)
+    want(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached)))
   }
 
   window.addEventListener('pointerdown', onPointerDown, true)
