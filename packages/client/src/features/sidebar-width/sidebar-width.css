@@ -21,6 +21,18 @@ body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-clau
   transition: opacity var(--dsh-claude-timing-feedback);
 }
 
+/* The rail's own travel, in the skin's own time. The host runs it 300ms on a
+   symmetric curve, which reads as a delay between the press and the column
+   moving; the settle token leaves at once, covers most of the distance early
+   and holds the last of it back, and the handle keeps pace with the column. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-animating] {
+  transition: grid-template-columns var(--dsh-claude-duration-move) var(--dsh-claude-ease-settle);
+}
+
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-animating] div[data-side="sidebar"] {
+  transition: left var(--dsh-claude-duration-move) var(--dsh-claude-ease-settle);
+}
+
 /* While the skin owns the gesture nothing eases the width: a transition on the
    columns would smooth every write into the one after it and the edge would
    trail the pointer for the whole drag. */
