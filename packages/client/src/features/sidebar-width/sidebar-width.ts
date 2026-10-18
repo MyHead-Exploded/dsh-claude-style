@@ -87,8 +87,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let observer: MutationObserver | null = null
   /** The width the reader last chose; the host forgets it at every fold. */
   let width = MIN_WIDTH
-  /** The width the pointer has asked for, waiting for the pass that writes it. */
-  let pending: number | null = null
+  /** The pass the pointer's last width is waiting for, or 0 while none waits. */
+  let writeFrame = 0
   /** Whether the pointer travelled past the dead zone, so a release resizes rather than folds. */
   let moved = false
   /** Whether the column stands folded right now, so the width write stands down. */
@@ -100,20 +100,28 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let disposed = false
 
   /**
-   * The pointer's own width, held until the pass writes it.
+   * The pointer's own width, held to one write per pass.
    *
-   * A drag re-lays the whole shell out — the middle column re-wraps to its new
-   * width — and the page has other readers of that layout. Writing here, in the
-   * pointer's own turn, puts this write in front of the next pass's measures and
-   * each of those reads then forces the layout to settle; the frame pays for it
-   * twice. Held to the pass, the reads happen first and the shell lays out once
-   * (D40). Moves that land on the width already asked for cost nothing, which
-   * is what the last stretch of a drag through the clamped end is made of.
+   * A drag writes the shell's first grid track, and that re-lays out all three
+   * columns and re-wraps the conversation behind them. Claude answers the same
+   * gesture once per frame, because the browser hands it one coalesced
+   * `mousemove` for the whole frame; `pointerrawupdate` carries every report the
+   * device makes, so this handler is called several times inside one frame on a
+   * 125Hz mouse and up to a thousand times a second on a trackpad. Asking for
+   * that layout each time buys nothing the frame will show: the pass lays out
+   * once, and the last width asked for is the one painted. A frame that cannot
+   * finish its layout in time is what a trailing edge feels like, so the work is
+   * held to the pass (D40) and the value written before paint is the one the
+   * pointer is standing at.
    */
   function want(next: number) {
     if (next === width) return
     width = next
-    writeWidth(next)
+    if (writeFrame !== 0) return
+    writeFrame = requestAnimationFrame(() => {
+      writeFrame = 0
+      if (!folded && dragging) writeWidth(width)
+    })
   }
 
   /** The frame's own grid with its first track set: the host's other two tracks
@@ -171,19 +179,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (disposed) return
     if (frame === null || !frame.isConnected || root === null || !root.isConnected) attach()
     if (frame === null || root === null) return
-    if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) {
-      pending = null
-      return
-    }
+    if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) return
     // The host unmounts the handle while the column is folded and mounts a new
     // one on the way out, so the seat is re-read whenever this one is gone.
     if (handle === null || !handle.isConnected) handle = frame.querySelector<HTMLElement>(SIDEBAR_RESIZE_HANDLE_SELECTOR)
-    if (pending !== null) {
-      const asked = pending
-      pending = null
-      writeWidth(asked)
-      return
-    }
     const wanted = `${width}px`
     if (root.style.width !== wanted || trackWidth() !== wanted) writeWidth(width)
     else if (handle !== null && handle.style.left !== wanted) handle.style.left = wanted
@@ -194,12 +193,12 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     folded = false
     dragging = false
     pointerId = -1
-    // The last move is written now: a pass may not come for a pointer that has
-    // stopped, and the column must not rest a frame short of where it was left.
-    if (pending !== null) {
-      const asked = pending
-      pending = null
-      writeWidth(asked)
+    // The last move is written now: the pass that would have carried it may not
+    // come, and the column must not rest a frame short of where it was left.
+    if (writeFrame !== 0) {
+      cancelAnimationFrame(writeFrame)
+      writeFrame = 0
+      writeWidth(width)
     }
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
     window.removeEventListener(MOVE_EVENT, onPointerMove as EventListener, true)

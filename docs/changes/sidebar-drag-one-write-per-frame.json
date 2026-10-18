@@ -1,0 +1,8 @@
+{
+  "group": "improvements",
+  "order": 2,
+  "at": "2026-10-19",
+  "external": false,
+  "zh": "**拖动侧栏时每帧只写一次宽度**：指针的原始上报按设备速率到达，此前每收到一个就写一次外壳的网格轨道，正文跟着重排一次；现在一个绘制帧只写一次，写的是这一帧最新的那一档宽度，松手时把尚未写出的那次补上。在内容多的页面上，拖动的边缘因此不再落后于指针。",
+  "en": "**The sidebar's drag writes its width once per frame**: the pointer's raw reports arrive at the device's own rate, and every one of them used to write the shell's grid track, re-wrapping the content behind it; a pass now carries a single write of the latest width, with the last one written on release. On a page with content in it the edge no longer trails the pointer."
+}
