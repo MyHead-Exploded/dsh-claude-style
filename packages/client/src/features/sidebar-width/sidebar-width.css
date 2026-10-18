@@ -13,24 +13,34 @@ body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-clau
   user-select: none;
 }
 
-/* Held past the floor, where letting go folds the column: the column dips, so
-   the throw reads as one before the release makes it so, and comes straight
-   back when the pointer returns to the floor. */
-body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-dsh-claude-sidebar-folding] [data-dsh-claude-part~="sidebar-column"] {
-  opacity: 0.55;
-  transition: opacity var(--dsh-claude-timing-feedback);
+/* The column's own entrance: the body fades in over the skin's slow cross-fade,
+   which is what Claude's sidebar does on the way out of a fold and on the first
+   paint alike (its `.df-body-fade-in`: 300ms `ease-out`, from an opacity of 0.01
+   so the box keeps painting). The rule stands on the expanded state, so the fold
+   takes it away and the return brings it back. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"]:not([data-sidebar-collapsed]) > [data-dsh-claude-part~="sidebar-column"] {
+  animation: dsh-claude-sidebar-body-in var(--dsh-claude-duration-fade) var(--dsh-claude-ease-out);
 }
 
-/* The rail's own travel, in the skin's own time. The host runs it 300ms on a
-   symmetric curve, which reads as a delay between the press and the column
-   moving; the settle token leaves at once, covers most of the distance early
-   and holds the last of it back, and the handle keeps pace with the column. */
-body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-animating] {
-  transition: grid-template-columns var(--dsh-claude-duration-move) var(--dsh-claude-ease-settle);
+@keyframes dsh-claude-sidebar-body-in {
+  from {
+    opacity: 0.01;
+  }
 }
 
+/* The reader's animation choice (D40): the body stands there instead. */
+body[data-dsh-claude-style][data-dsh-claude-motion="reduced"] [data-dsh-claude-part~="layout-frame"] > [data-dsh-claude-part~="sidebar-column"] {
+  animation: none;
+}
+
+/* The fold and the un-fold are one layout swap rather than a travel: Claude's
+   column leaves the grid and the rail takes its place within a frame, and the
+   body's own fade covers the seam. Against the running app the edge never rests
+   between two positions while the rail moves, so the host's own 300ms on the
+   columns is stood down here. */
+body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-animating],
 body[data-dsh-claude-style] [data-dsh-claude-part~="layout-frame"][data-animating] div[data-side="sidebar"] {
-  transition: left var(--dsh-claude-duration-move) var(--dsh-claude-ease-settle);
+  transition: none;
 }
 
 /* While the skin owns the gesture nothing eases the width: a transition on the

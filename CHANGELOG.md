@@ -39,7 +39,7 @@ All notable changes to `dsh-claude-style` are documented here, newest first.
 <h3 id="cn-0.16.3">新增功能</h3>
 
 - **Beam 的模型行画出厂商组合标**：目录里 `opencode-go/beam-free` 这类标识现在认领 Reflection 的组合标。字标是厂名的，模型名里从不写它，字标因此站在名字前面；标记在浅色画布上用厂商自己的品牌色，深色画布上随标签文字。
-- **侧栏可以拖得比宿主的下限更窄**：左侧边栏能一路拖到 215px（宿主自己的下限是 264px），越过下限 90px 时侧栏变暗、拖到 100px 时当场收起（收起与展开跑皮肤自己的 200ms 落位曲线），收起后仍按住鼠标向右拖过窗口左边 110px 处侧栏重新弹出，收起再展开回到你上一次拖到的那一档。
+- **侧栏的宽度与收张按 Claude 的读数来**：左侧边栏能拖到 200px（宿主自己的下限是 264px）；上限随窗口走，取 clamp(⌊窗口宽度⌋ − 330, 200, 420)px，正文列因此始终留出 330px。拖动中候选宽度低于 100px（下限的一半）时侧栏当场收起，回拖过这条线又当场弹出，收起与展开各是一次版式交换，内容以 300ms 淡入落下；在把手上按下并松开（位移不超过 3px）就是收张开关；收起再展开回到你上一次拖到的那一档。
 
 ### 体验优化
 
@@ -65,7 +65,7 @@ All notable changes to `dsh-claude-style` are documented here, newest first.
 <h3 id="en-0.16.3">New Features</h3>
 
 - **Beam rows draw the vendor lockup**: an id such as `opencode-go/beam-free` now claims Reflection's lockup. The wordmark is the vendor's, which the catalog's name never spells, so it leads the label; the mark wears the vendor's own brand colour on the ivory canvas and the label's ink on the warm black one.
-- **The sidebar drags narrower than the host's own floor**: the left column goes down to 215px against the host's 264px, the column dims 90px past the floor and folds at 100px while the pointer is still down, through the skin's own 200ms settle curve, and with the button held a drag back out past 110px from the window's edge brings it back, and expanding it again comes back to the width you last dragged to.
+- **The width and the folding follow Claude's own readings**: the left column drags down to 200px against the host's 264px, and its ceiling follows the window — clamp(⌊viewport⌋ - 330, 200, 420)px, which leaves the content column 330px. A drag below 100px, half the floor, folds the column on the spot and a drag back over that line brings it out again, each of the two being one layout swap with the body fading in over 300ms; a press and release on the handle (under 3px of travel) is the collapse toggle itself, and expanding the column comes back to the width you last dragged to.
 
 ### Improvements
 

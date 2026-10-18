@@ -30,6 +30,7 @@ const { washLineScenario } = require('./wash-line.cjs')
 const { longSessionScenario } = require('./long-session.cjs')
 const { statsScenarios } = require('./stats-position.cjs')
 const { sidebarRailScenario } = require('./sidebar-rail.cjs')
+const { sidebarWidthScenario } = require('./sidebar-width.cjs')
 const { remoteSettingsScenario } = require('./remote-settings.cjs')
 const { customBrandScenario } = require('./custom-brand.cjs')
 const { dsBotScenario } = require('./ds-bot.cjs')
@@ -525,6 +526,8 @@ const SCENARIOS = {
   ...statsScenarios({ check }),
   /** The collapsed rail as one icon column, its chip centred on it (sidebar-rail.cjs). */
   sidebarRail: sidebarRailScenario({ check }),
+  /** The column's drag against Claude's own bounds and fold line (sidebar-width.cjs). */
+  sidebarWidth: sidebarWidthScenario({ check }),
   /** The waiting line and the counted process headers (process-summary.cjs, D74). */
   processSummary: processSummaryScenario({ check }),
   /** The file-change rows of one file read as one row (file-merge.cjs). */

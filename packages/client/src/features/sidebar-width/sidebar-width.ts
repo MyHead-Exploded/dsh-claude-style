@@ -20,29 +20,44 @@ import type manifest from './sidebar-width.manifest'
  * So the gesture is taken over whole: the pointerdown is stopped before the
  * host's own handler sees it, and the three places the host writes per frame —
  * the frame's first grid track, the root's inline width, the handle's inline
- * `left` — are written here instead. A drag below the collapse width lets go
- * and presses the host's toggle, so the rail keeps its own animation.
+ * `left` — are written here instead.
+ *
+ * The bounds and the state machine are Claude's own, read out of its shipped
+ * bundle (Claude Desktop 2.42304.0: `shared-common-mcp-msg-2` for the numbers,
+ * `shared-19` for the gesture) and then confirmed frame by frame against the
+ * running app:
+ *
+ * - the floor is 200 (`MIN`), the constant ceiling 420 (`MAX`), and the ceiling
+ *   that holds in practice keeps 330px for the content column:
+ *   `clamp(⌊innerWidth⌋ − 330, 200, 420)`;
+ * - a drag past the floor's half — 100px — folds the column on the spot, with
+ *   the button still down, and a drag back over that line brings it out again;
+ *   one anchor serves the whole gesture, so the width resumes at the floor and
+ *   only follows once the candidate passes it;
+ * - a release within 3px of the pointerdown is a press on the collapse toggle,
+ *   not a resize;
+ * - nothing eases the follow. Measured against the running app the column's
+ *   width matches the pointer position to 0.54px rms, and a release never
+ *   jumps.
  *
  * The host re-renders the column from the store it never hears this gesture
  * through, hence `sync`: a pass that reads the store's number back corrects it.
  */
 
-/** The narrowest the column may be dragged, against the host's own 264. */
-const MIN_WIDTH = 215
-/** The widest, which is the host's own ceiling. */
+/** The narrowest the column may be dragged, which is also the fold line's own datum. */
+const MIN_WIDTH = 200
+/** The widest, on a wide enough viewport. */
 const MAX_WIDTH = 420
+/** The content column's reserve: the ceiling leaves this much of the window to it. */
+const VIEWPORT_RESERVE = 330
 /**
- * How far past the floor the pointer goes before the release folds the column.
- * Measured from the floor rather than as a width of its own: the column stands
- * still at the floor while the pointer travels, so a width threshold deep below
- * it asks the reader to drag a stretch that shows no sign of being read.
+ * How far the pointer travels before a release counts as a resize rather than a
+ * press on the toggle. It decides only that, the way Claude's own `aj` leaves
+ * the geometry alone: the width answers the pointer from the first move on.
  */
-/** How far past the floor the column dims: the throw is about to fold it. */
-const DIM_OVERDRAG = 90
-/** How far past the floor the fold lands, the pointer still being down. */
-const FOLD_OVERDRAG = 100
-/** How far right of the window's own left edge a folded column comes back out. */
-const REOPEN_X = 110
+const DRAG_DEAD_ZONE = 3
+/** Where a drag folds the column: half the floor, read against the candidate width. */
+const FOLD_WIDTH = MIN_WIDTH / 2
 /** The freshest pointer positions the browser offers, one per input report. */
 const MOVE_EVENT: 'pointerrawupdate' | 'pointermove' =
   'onpointerrawupdate' in window ? 'pointerrawupdate' : 'pointermove'
@@ -59,8 +74,11 @@ const DRAGGING_ATTRIBUTE = 'data-dsh-claude-sidebar-dragging'
  * seat falls back to the part alone; a fold that cannot press it is no fold.
  */
 const findAnyToggle = cacheFirstMatch<HTMLButtonElement>('[data-dsh-claude-part~="sidebar-toggle"]')
-/** The skin's mark while a release would fold the column instead of keeping it. */
-const FOLDING_ATTRIBUTE = 'data-dsh-claude-sidebar-folding'
+
+/** The widest the column may stand on this viewport. */
+function ceiling() {
+  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.floor(window.innerWidth) - VIEWPORT_RESERVE))
+}
 
 export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let frame: HTMLElement | null = null
@@ -71,11 +89,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let width = MIN_WIDTH
   /** The width the pointer has asked for, waiting for the pass that writes it. */
   let pending: number | null = null
-  /** Whether the pointer stands past the floor right now, so the release folds the column. */
-  /** Whether the throw has folded the column while the pointer stays down. */
-  let foldedHeld = false
-  /** Whether the column is dimmed right now. */
-  let dimmed = false
+  /** Whether the pointer travelled past the dead zone, so a release resizes rather than folds. */
+  let moved = false
+  /** Whether the column stands folded right now, so the width write stands down. */
+  let folded = false
   let dragging = false
   let pointerId = -1
   let startX = 0
@@ -173,8 +190,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   }
 
   function stopGesture() {
-    foldedHeld = false
-    dimmed = false
+    moved = false
+    folded = false
     dragging = false
     pointerId = -1
     // The last move is written now: a pass may not come for a pointer that has
@@ -185,14 +202,17 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       writeWidth(asked)
     }
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
-    frame?.removeAttribute(FOLDING_ATTRIBUTE)
     window.removeEventListener(MOVE_EVENT, onPointerMove as EventListener, true)
     window.removeEventListener('pointerup', onPointerUp, true)
     window.removeEventListener('pointercancel', stopGesture, true)
   }
 
-  /** Fold the column: the host's toggle is pressed, and its own rail animation runs. */
-  function fold() {
+  /**
+   * Press the host's collapse toggle once: the column folds, or comes back out
+   * of the fold. The rail's geometry, its travel and its handle are the host's;
+   * the width to return to is this one's own, held across the fold.
+   */
+  function pressToggle() {
     (findSidebarToggle() ?? findAnyToggle())?.click()
   }
 
@@ -207,6 +227,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     event.stopImmediatePropagation()
     event.preventDefault()
     dragging = true
+    moved = false
+    folded = false
     // The pointer is held by the handle for the rest of the gesture, so a drag
     // that outruns the column — or leaves the window — keeps arriving here.
     grabbed.setPointerCapture?.(event.pointerId)
@@ -223,45 +245,29 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (!dragging || event.pointerId !== pointerId) return
     event.stopImmediatePropagation()
     event.preventDefault()
-    // Folded by the throw while the button is still down: dragging back out of
-    // the window's own edge brings the column back, and the drag carries on.
-    if (foldedHeld) {
-      if (event.clientX > REOPEN_X) reopen(event.clientX)
-      return
+    // The dead zone decides what a release means and nothing else.
+    if (Math.abs(event.clientX - startX) > DRAG_DEAD_ZONE) moved = true
+    // One anchor for the whole gesture: the candidate is the width at
+    // pointerdown plus the pointer's travel, so a fold and the return out of it
+    // never re-base the follow.
+    const candidate = Math.round(startWidth + (event.clientX - startX))
+    const nowFolded = candidate < FOLD_WIDTH
+    if (nowFolded !== folded) {
+      folded = nowFolded
+      pressToggle()
     }
-    const reached = Math.round(startWidth + (event.clientX - startX))
-    const past = MIN_WIDTH - reached
-    if (past >= FOLD_OVERDRAG) {
-      foldedHeld = true
-      dimmed = true
-      frame?.setAttribute(FOLDING_ATTRIBUTE, '')
-      want(MIN_WIDTH)
-      fold()
-      return
-    }
-    // The dim goes up just before the fold, so the throw reads as one move.
-    const dimming = past >= DIM_OVERDRAG
-    if (dimming !== dimmed) {
-      dimmed = dimming
-      if (dimming) frame?.setAttribute(FOLDING_ATTRIBUTE, '')
-      else frame?.removeAttribute(FOLDING_ATTRIBUTE)
-    }
-    want(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, reached)))
-  }
-
-  /** Out of the fold: the toggle is pressed again and the drag resumes at the floor. */
-  function reopen(at: number) {
-    foldedHeld = false
-    dimmed = false
-    frame?.removeAttribute(FOLDING_ATTRIBUTE)
-    fold()
-    startX = at
-    startWidth = MIN_WIDTH
+    // Folded, the column's geometry belongs to the host's rail: writing a width
+    // here would fight the layout that just replaced it.
+    if (!folded) want(Math.min(ceiling(), Math.max(MIN_WIDTH, candidate)))
   }
 
   function onPointerUp(event: PointerEvent) {
     if (!dragging || event.pointerId !== pointerId) return
+    const pressed = !moved
     stopGesture()
+    // A press rather than a resize: the handle doubles as the collapse toggle,
+    // which is the affordance Claude's own handle carries.
+    if (pressed) pressToggle()
   }
 
   window.addEventListener('pointerdown', onPointerDown, true)
@@ -274,7 +280,6 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     observer = null
     window.removeEventListener('pointerdown', onPointerDown, true)
     frame?.removeAttribute(DRAGGING_ATTRIBUTE)
-    frame?.removeAttribute(FOLDING_ATTRIBUTE)
     frame = null
     root = null
     handle = null

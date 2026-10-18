@@ -130,6 +130,16 @@
       "name": "waitLineMinGapMs",
       "value": 850,
       "reason": "The state line changes at most once a second, and the record is stamped by the page when it writes the wording; the slack under that second covers only a change landing between two frames of that write."
+    },
+    {
+      "name": "sidebarWidthFloorPx",
+      "value": 200,
+      "reason": "The lowest the sidebar column may be dragged. Claude Desktop holds the same number as its own MIN, and the skin took the gesture over to carry it, so a check reads it here rather than restating it beside the drag."
+    },
+    {
+      "name": "sidebarWidthFollowSlackPx",
+      "value": 2,
+      "reason": "How far the frame's first grid track may stand from the pointer's own travel. The track is written as whole pixels while the pointer reports fractions, and the browser rounds the grid line it lands on, so one pixel of slack is the arithmetic and the second covers a step that arrives a frame late on a loaded runner."
     }
   ]
 }
